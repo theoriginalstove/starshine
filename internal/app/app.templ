@@ -1,0 +1,41 @@
+package app
+
+templ hello() {
+    @Base() {
+        <h2 class="text-center text-neutral-800 dark:text-neutral-200">Hello!</h2>
+        {children...}
+    }
+}
+
+templ Base() {
+    <html>
+    <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/iconoir-icons/iconoir@main/css/iconoir.css"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) 
+            && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        // whenever the user explicitly chooses light mode
+        localStorage.theme = 'light'
+        // whenever the user chooses dark mode
+        localStorage.theme = 'dark'
+        // OS preference
+        localStorage.removeItem('theme')
+    </script>
+    <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+    </head>
+    <body class="h-full bg-neutral-200  dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200">
+        <h1 class="text-center text-3xl">Hello from base</h1>
+        { children... }
+    </body>
+</html>
+}
