@@ -13,7 +13,7 @@ import (
 
 const (
 	brightness = 64
-	ledCounts  = 9
+	ledCounts  = 300
 	gpioPin    = 18
 	freq       = 700000
 	sleepTime  = 1

@@ -9,7 +9,7 @@ import (
 
 const (
 	brightness = 128
-	ledCounts  = 9
+	ledCounts  = 300
 	gpioPin    = 18
 	freq       = 800000
 	sleepTime  = 1
@@ -46,7 +46,7 @@ func (h *Handler) on(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	slog.InfoContext(ctx, "turning leds on")
 	for i := 0; i < len(h.led.ws.Leds(0)); i++ {
-		h.led.ws.Leds(0)[i] = rgbToColor(255, 255, 255)
+		h.led.ws.Leds(0)[i] = rgbToColor(254, 196, 127)
 	}
 
 	if err := h.led.ws.Render(); err != nil {

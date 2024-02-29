@@ -1,10 +1,10 @@
 package logger
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"strconv"
 	"sync"
@@ -33,17 +33,18 @@ const (
 
 type Handler struct {
 	h slog.Handler
-	w io.Writer
+	b *bytes.Buffer
 	m *sync.Mutex
 }
 
-func NewHandler(w io.Writer, opts *slog.HandlerOptions) *Handler {
+func NewHandler(opts *slog.HandlerOptions) *Handler {
 	if opts == nil {
 		opts = &slog.HandlerOptions{}
 	}
+	b := &bytes.Buffer{}
 	return &Handler{
-		w: w,
-		h: slog.NewJSONHandler(w, &slog.HandlerOptions{
+		b: b,
+		h: slog.NewJSONHandler(b, &slog.HandlerOptions{
 			Level:       opts.Level,
 			AddSource:   opts.AddSource,
 			ReplaceAttr: suppressDefaults(opts.ReplaceAttr),

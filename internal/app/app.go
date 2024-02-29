@@ -3,7 +3,6 @@ package app
 import (
 	"fmt"
 	"log/slog"
-	"os"
 
 	"github.com/go-chi/chi/v5"
 	led "github.com/rpi-ws281x/rpi-ws281x-go"
@@ -30,7 +29,7 @@ func NewApp(opts ...AppOptFunc) (*App, error) {
 	a := &App{
 		name: "sharedo-api-service",
 	}
-	logger := slog.New(logger.NewHandler(os.Stderr, nil))
+	logger := slog.New(logger.NewHandler(nil))
 	a.Logger = logger
 	slog.SetDefault(logger)
 
