@@ -10,5 +10,6 @@ func Routes(h *Handler) chi.Router {
 	r.Get("/", templ.Handler(hello()).ServeHTTP)
 	r.Get("/on", h.on)
 	r.Get("/off", h.off)
+	r.Post("/mode", h.setMode)
 	return r
 }

@@ -92,7 +92,7 @@ func (h *Handler) Handle(ctx context.Context, r slog.Record) error {
 		return err
 	}
 
-	bytes, err := json.MarshalIndent(attrs, "", "  ")
+	bytes, err := json.Marshal(attrs)
 	if err != nil {
 		return fmt.Errorf("error when marshaling attrs: %w", err)
 	}
