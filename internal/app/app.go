@@ -6,6 +6,9 @@ import (
 	"os"
 
 	"github.com/go-chi/chi/v5"
+	led "github.com/rpi-ws281x/rpi-ws281x-go"
+
+	"github.com/theoriginalstove/starshine/internal/logger"
 	"github.com/theoriginalstove/starshine/internal/server"
 )
 
@@ -27,7 +30,7 @@ func NewApp(opts ...AppOptFunc) (*App, error) {
 	a := &App{
 		name: "sharedo-api-service",
 	}
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	logger := slog.New(logger.NewHandler(os.Stderr, nil))
 	a.Logger = logger
 	slog.SetDefault(logger)
 
@@ -37,15 +40,37 @@ func NewApp(opts ...AppOptFunc) (*App, error) {
 		}
 	}
 
+	ledOpts := led.DefaultOptions
+	ledOpts.Channels[0].Brightness = brightness
+	ledOpts.Channels[0].LedCount = ledCounts
+	ledOpts.Channels[0].GpioPin = gpioPin
+	ledOpts.Frequency = freq
+	ws2811, err := led.MakeWS2811(&ledOpts)
+	if err != nil {
+		panic(err)
+	}
+
+	handler := &Handler{
+		led: &LED{
+			ws:  ws2811,
+			clr: &color{},
+		},
+	}
+
+	err = handler.led.init()
+	if err != nil {
+		return nil, fmt.Errorf("unable to create new LED: %w", err)
+	}
+
 	routes := map[string]chi.Router{
-		"/": Routes(),
+		"/": Routes(handler),
 	}
 	r := NewRouter(routes)
 
 	srv, err := server.NewServer(
 		a.name,
 		server.WithHandler(r),
-		server.WithAddr("0.0.0.0:8080"),
+		server.WithAddr("0.0.0.0:7000"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create new server for app: %w", err)
