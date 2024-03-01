@@ -2,11 +2,9 @@ package app
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 
 	led "github.com/rpi-ws281x/rpi-ws281x-go"
@@ -121,6 +119,8 @@ func (h *Handler) setMode(w http.ResponseWriter, r *http.Request) {
 		err = h.static(254, 169, 72)
 	case "rgbwave":
 		err = h.rgbWave()
+	case "rgbfade":
+		err = h.rainbowHSVToRGBFade()
 	default:
 		err = h.static(0, 0, 0)
 	}
@@ -131,40 +131,4 @@ func (h *Handler) setMode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(200)
-}
-
-func rgbToColor(r uint8, g uint8, b uint8) uint32 {
-	return uint32(uint32(r)<<16 | uint32(g)<<8 | uint32(b))
-}
-
-func getRGBColor(c string) ([]uint8, error) {
-	vals := strings.Split(c, ",")
-	if len(vals) != 3 {
-		return []uint8{0, 0, 0}, errors.New("not a valid RGB color")
-	}
-	r, err := strconv.Atoi(vals[0])
-	if err != nil {
-		return []uint8{0, 0, 0}, errors.New("not a valid RGB color")
-	}
-	g, err := strconv.Atoi(vals[1])
-	if err != nil {
-		return []uint8{0, 0, 0}, errors.New("not a valid RGB color")
-	}
-	b, err := strconv.Atoi(vals[2])
-	if err != nil {
-		return []uint8{0, 0, 0}, errors.New("not a valid RGB color")
-	}
-
-	if r < 0 || r > 255 {
-		r = 0
-	}
-
-	if g < 0 || g > 255 {
-		g = 0
-	}
-
-	if b < 0 || b > 255 {
-		b = 0
-	}
-	return []uint8{uint8(r), uint8(g), uint8(b)}, nil
 }

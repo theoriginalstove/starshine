@@ -21,6 +21,7 @@ type App struct {
 	Server  *server.Server
 	Routers []chi.Router
 	Logger  *slog.Logger
+	env     string
 }
 
 type AppOptFunc func(*App) error
@@ -92,6 +93,13 @@ func WithLogger(l *slog.Logger) AppOptFunc {
 	return func(a *App) error {
 		a.Logger = l
 		slog.SetDefault(l)
+		return nil
+	}
+}
+
+func WithEnv(e string) AppOptFunc {
+	return func(a *App) error {
+		a.env = e
 		return nil
 	}
 }
