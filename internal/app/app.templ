@@ -2,7 +2,7 @@ package app
 
 templ hello() {
     @Base() {
-        <h2 class="text-center text-neutral-800 dark:text-neutral-200">Hello!</h2>
+        <h2 class="text-center text-neutral-800 dark:text-neutral-200">Try again Sucka!!</h2>
         {children...}
     }
 }
@@ -56,7 +56,15 @@ templ Base() {
                         hx-get="/on"
                         hx-swap="none"
                     >
-                        On
+                    On
+                    </button>
+                    <button 
+                        type="button" 
+                        class="relative inline-flex items-center bg-neutral-200 px-3 py-e text-sm font-semibold text-neutral-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-10"
+                        hx-post="/reset"
+                        hx-swap="none"
+                    >
+                    Reset
                     </button>
                     <button 
                         type="button" 
@@ -64,7 +72,7 @@ templ Base() {
                         hx-get="/off"
                         hx-swap="none"
                     >
-                        Off
+                    Off
                     </button>
                 </span>
             </div>
@@ -81,7 +89,7 @@ templ Base() {
                   </select>
                 </div>
                 <input class="rounded-l my-2 px-2 py-1 text-neutral-800" 
-                    type="rgbColor" name="rgbColor" placeholder="0,0,0" />
+                    type="color" name="rgbColor" placeholder="0,0,0" />
                 <input class="rounded-l my-2 px-2 py-1 text-neutral-800" 
                     type="brightness" name="brightness" placeholder="128" />
                 <button class="rounded-2xl bg-indigo-500 text-sm text-indigo-50 px-3 py-2 font-semibold my-1 items-center 

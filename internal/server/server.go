@@ -51,9 +51,9 @@ func NewServer(name string, opts ...ServerOptFunc) (*Server, error) {
 	return srv, nil
 }
 
-func (s *Server) ListenAndServe() {
+func (s *Server) ListenAndServe() error {
 	slog.Info("listening at:", slog.Any("server-addr", s.server.Addr))
-	s.server.ListenAndServe()
+	return s.server.ListenAndServe()
 }
 
 func (s *Server) Addr() string {

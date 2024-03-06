@@ -5,8 +5,8 @@ import (
 	"log/slog"
 
 	"github.com/go-chi/chi/v5"
-	led "github.com/rpi-ws281x/rpi-ws281x-go"
 
+	"github.com/theoriginalstove/starshine/internal/fakestrip"
 	"github.com/theoriginalstove/starshine/internal/logger"
 	"github.com/theoriginalstove/starshine/internal/server"
 )
@@ -22,17 +22,22 @@ type App struct {
 	Routers []chi.Router
 	Logger  *slog.Logger
 	env     string
+	light   lighter
+	addr    string
 }
 
 type AppOptFunc func(*App) error
 
 func NewApp(opts ...AppOptFunc) (*App, error) {
 	a := &App{
-		name: "sharedo-api-service",
+		name: "starshine-server",
+		addr: "0.0.0.0:7000",
 	}
 	logger := slog.New(logger.NewHandler(nil))
 	a.Logger = logger
 	slog.SetDefault(logger)
+
+	a.light = &fakestrip.Fakestrip{}
 
 	for _, fn := range opts {
 		if err := fn(a); err != nil {
@@ -40,26 +45,8 @@ func NewApp(opts ...AppOptFunc) (*App, error) {
 		}
 	}
 
-	ledOpts := led.DefaultOptions
-	ledOpts.Channels[0].Brightness = brightness
-	ledOpts.Channels[0].LedCount = ledCounts
-	ledOpts.Channels[0].GpioPin = gpioPin
-	ledOpts.Frequency = freq
-	ws2811, err := led.MakeWS2811(&ledOpts)
-	if err != nil {
-		panic(err)
-	}
-
 	handler := &Handler{
-		led: &LED{
-			ws:  ws2811,
-			clr: &color{},
-		},
-	}
-
-	err = handler.led.init()
-	if err != nil {
-		return nil, fmt.Errorf("unable to create new LED: %w", err)
+		led: a.light,
 	}
 
 	routes := map[string]chi.Router{
@@ -70,7 +57,7 @@ func NewApp(opts ...AppOptFunc) (*App, error) {
 	srv, err := server.NewServer(
 		a.name,
 		server.WithHandler(r),
-		server.WithAddr("0.0.0.0:7000"),
+		server.WithAddr(a.addr),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create new server for app: %w", err)
@@ -100,6 +87,21 @@ func WithLogger(l *slog.Logger) AppOptFunc {
 func WithEnv(e string) AppOptFunc {
 	return func(a *App) error {
 		a.env = e
+		return nil
+	}
+}
+
+func WithLighter(l lighter) AppOptFunc {
+	return func(a *App) error {
+		slog.Warn("using lighter", slog.Any("lighter", l))
+		a.light = l
+		return nil
+	}
+}
+
+func WithAddr(addr string) AppOptFunc {
+	return func(a *App) error {
+		a.addr = addr
 		return nil
 	}
 }

@@ -11,5 +11,7 @@ func Routes(h *Handler) chi.Router {
 	r.Get("/on", h.on)
 	r.Get("/off", h.off)
 	r.Post("/mode", h.setMode)
+	r.Get("/reset", h.reset)
+	r.Post("/reset", h.reset)
 	return r
 }

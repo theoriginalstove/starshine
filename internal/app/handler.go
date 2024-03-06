@@ -6,8 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-
-	led "github.com/rpi-ws281x/rpi-ws281x-go"
 )
 
 const (
@@ -15,7 +13,7 @@ const (
 	ledCounts  = 300
 	gpioPin    = 18
 	freq       = 800000
-	sleepTime  = 1
+	sleepTime  = 100
 )
 
 type color struct {
@@ -24,26 +22,12 @@ type color struct {
 	b uint8
 }
 
-type LED struct {
-	ws  *led.WS2811
-	clr *color
-}
-
-func (l *LED) init() error {
-	err := l.ws.Init()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 type Handler struct {
-	led  *LED
-	quit chan bool
+	led lighter
 }
 
-func NewHandler(led *LED) *Handler {
-	return &Handler{led: led, quit: make(chan bool)}
+func NewHandler(l lighter) *Handler {
+	return &Handler{led: l}
 }
 
 type lightsRequest struct {
@@ -51,22 +35,33 @@ type lightsRequest struct {
 	RGBColor string `json:"rgbColor"`
 }
 
+func (h *Handler) reset(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	slog.InfoContext(ctx, "resetting lighter")
+	err := h.led.Init(true)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
 func (h *Handler) on(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	slog.InfoContext(ctx, "turning leds on")
-	go func() {
-		h.quit <- false
-	}()
-	for i := 0; i < len(h.led.ws.Leds(0)); i++ {
-		h.led.ws.Leds(0)[i] = rgbToColor(254, 196, 127)
-	}
-
-	if err := h.led.ws.Render(); err != nil {
+	err := h.led.Cancel()
+	if err != nil {
+		slog.ErrorContext(ctx, "error encountered cancelling lights", slog.Any("err", err))
 		w.WriteHeader(500)
-		slog.ErrorContext(ctx, "unable to set LEDs", slog.Any("err", err))
 		return
 	}
 
+	err = h.led.Static("#FFFFFF")
+	if err != nil {
+		slog.ErrorContext(ctx, "error encountered cancelling lights", slog.Any("err", err))
+		w.WriteHeader(500)
+		return
+	}
 	slog.InfoContext(ctx, "leds turned on")
 	w.WriteHeader(200)
 }
@@ -74,13 +69,17 @@ func (h *Handler) on(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) off(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	slog.InfoContext(ctx, "turning leds off")
-	for i := 0; i < len(h.led.ws.Leds(0)); i++ {
-		h.led.ws.Leds(0)[i] = rgbToColor(0, 0, 0)
+	err := h.led.Cancel()
+	if err != nil {
+		slog.ErrorContext(ctx, "error encountered cancelling lights", slog.Any("err", err))
+		w.WriteHeader(500)
+		return
 	}
 
-	if err := h.led.ws.Render(); err != nil {
+	err = h.led.Off()
+	if err != nil {
+		slog.ErrorContext(ctx, "error encountered turning off lights", slog.Any("err", err))
 		w.WriteHeader(500)
-		slog.ErrorContext(ctx, "unable to set LEDs", slog.Any("err", err))
 		return
 	}
 	slog.InfoContext(ctx, "leds turned off")
@@ -89,9 +88,6 @@ func (h *Handler) off(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) setMode(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	go func() {
-		h.quit <- false
-	}()
 	bts, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.Write([]byte("internal server error"))
@@ -106,23 +102,43 @@ func (h *Handler) setMode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = h.led.Cancel()
+	if err != nil {
+		slog.ErrorContext(ctx, "error encountered cancelling lights", slog.Any("err", err))
+		w.WriteHeader(500)
+		return
+	}
+
 	switch m := req.Mode; strings.ToLower(m) {
 	case "static":
-		rgb, err := getRGBColor(req.RGBColor)
+		err = h.led.Static(req.RGBColor)
 		if err != nil {
 			slog.ErrorContext(ctx, "unable to set light mode", slog.Any("err", err))
 			w.WriteHeader(500)
 			return
 		}
-		err = h.static(rgb[0], rgb[1], rgb[2])
 	case "warm":
-		err = h.static(254, 169, 72)
+		slog.InfoContext(ctx, "setting to warm")
+		err = h.led.Static("#ffb348")
+		if err != nil {
+			slog.ErrorContext(ctx, "unable to set light mode", slog.Any("err", err), slog.String("mode", m))
+			w.WriteHeader(500)
+			return
+		}
 	case "rgbwave":
-		err = h.rgbWave()
+		slog.InfoContext(ctx, "setting to rgbwave")
+		go h.led.RgbWave()
 	case "rgbfade":
-		err = h.rainbowHSVToRGBFade()
+		slog.InfoContext(ctx, "setting to rgbfade")
+		go h.led.RainbowHSVToRGBFade()
 	default:
-		err = h.static(0, 0, 0)
+		slog.InfoContext(ctx, "defaulting to off")
+		err = h.led.Static("#000000")
+		if err != nil {
+			slog.ErrorContext(ctx, "unable to set light mode", slog.Any("err", err), slog.String("case", "default"), slog.String("mode", m))
+			w.WriteHeader(500)
+			return
+		}
 	}
 	if err != nil {
 		slog.ErrorContext(ctx, "unable to set light mode", slog.Any("err", err))
@@ -131,4 +147,13 @@ func (h *Handler) setMode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(200)
+}
+
+type lighter interface {
+	Init(test bool) error
+	Cancel() error
+	RgbWave()
+	RainbowHSVToRGBFade()
+	Static(hex string) error
+	Off() error
 }
