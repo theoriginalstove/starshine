@@ -35,17 +35,6 @@ type lightsRequest struct {
 	RGBColor string `json:"rgbColor"`
 }
 
-func (h *Handler) reset(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	slog.InfoContext(ctx, "resetting lighter")
-	err := h.led.Init(true)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-}
-
 func (h *Handler) on(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	slog.InfoContext(ctx, "turning leds on")
@@ -86,6 +75,17 @@ func (h *Handler) off(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 }
 
+func (h *Handler) reset(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	slog.InfoContext(ctx, "resetting lighter")
+	err := h.led.Init(true)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
 func (h *Handler) setMode(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	bts, err := io.ReadAll(r.Body)
@@ -118,7 +118,6 @@ func (h *Handler) setMode(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case "warm":
-		slog.InfoContext(ctx, "setting to warm")
 		err = h.led.Static("#ffb348")
 		if err != nil {
 			slog.ErrorContext(ctx, "unable to set light mode", slog.Any("err", err), slog.String("mode", m))
@@ -146,7 +145,34 @@ func (h *Handler) setMode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(200)
+	mode := h.led.Mode()
+	resp := modeResponse{Mode: mode}
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(respBytes)
+}
+
+type modeResponse struct {
+	Mode string `json:"mode"`
+}
+
+func (h *Handler) getMode(w http.ResponseWriter, r *http.Request) {
+	mode := h.led.Mode()
+
+	resp := modeResponse{Mode: mode}
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(respBytes)
 }
 
 type lighter interface {
@@ -156,4 +182,5 @@ type lighter interface {
 	RainbowHSVToRGBFade()
 	Static(hex string) error
 	Off() error
+	Mode() string
 }

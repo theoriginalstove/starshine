@@ -256,3 +256,10 @@ func (ls *Lightstrip) Cancel() error {
 	}()
 	return nil
 }
+
+func (ls *Lightstrip) Mode() string {
+	ls.mu.Lock()
+	defer ls.mu.Unlock()
+	m := ls.currentMode
+	return m
+}
