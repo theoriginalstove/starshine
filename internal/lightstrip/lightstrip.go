@@ -35,6 +35,7 @@ type Lightstrip struct {
 	currentMode string
 	lastW       bool
 	lastF       bool
+	firstInit   bool
 	mu          sync.Mutex
 }
 
@@ -49,13 +50,18 @@ func (ls *Lightstrip) Init(test bool) error {
 		return err
 	}
 	ls.mu = sync.Mutex{}
-
 	ls.ws = ws2811
 	ls.quitFade = make(chan bool)
 	ls.quitWave = make(chan bool)
 
+	if !ls.firstInit {
+		ls.ws.Fini()
+	}
 	slog.Info("initializing ws2811")
 	err = ls.ws.Init()
+	if ls.firstInit {
+		ls.firstInit = false
+	}
 	if err != nil {
 		return err
 	}
